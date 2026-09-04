@@ -9,6 +9,8 @@ export interface Stop {
   activity: string
   /** Optional cuisine id, only meaningful for the food presets. */
   cuisine?: string
+  /** Per-stop reshuffle counter, starting at 1. Read defensively as `stop.roll ?? 1`. */
+  roll?: number
 }
 
 export interface Plan {
@@ -50,7 +52,7 @@ export function formatDate(isoDate: string): string {
 }
 
 export function defaultStop(): Stop {
-  return { activity: 'coffee' }
+  return { activity: 'coffee', roll: 1 }
 }
 
 export function defaultPlan(): Plan {
@@ -92,6 +94,10 @@ export function planToParams(plan: Plan): URLSearchParams {
     params.set(`activity${suffix}`, stop.activity)
     const cuisine = effectiveCuisine(stop)
     if (cuisine) params.set(`cuisine${suffix}`, cuisine)
+    // Only written once a stop has been reshuffled, so the default (1) keeps
+    // the URL clean and matches today's shared links byte-for-byte.
+    const roll = stop.roll ?? 1
+    if (roll > 1) params.set(`roll${suffix}`, String(roll))
   })
   return params
 }
@@ -104,7 +110,9 @@ function stopFromParams(params: URLSearchParams, index: number): Stop | null {
 
   const activity = raw.slice(0, 80).trim() || defaultStop().activity
   const cuisine = getCuisine(params.get(`cuisine${suffix}`) ?? undefined)
-  return { activity, cuisine: supportsCuisine(activity) ? cuisine?.id : undefined }
+  const rawRoll = Number(params.get(`roll${suffix}`))
+  const roll = Number.isFinite(rawRoll) && rawRoll > 0 ? Math.floor(rawRoll) : 1
+  return { activity, cuisine: supportsCuisine(activity) ? cuisine?.id : undefined, roll }
 }
 
 export function planFromParams(params: URLSearchParams): Plan | null {
@@ -134,7 +142,12 @@ export function planFromParams(params: URLSearchParams): Plan | null {
 /** Stable key describing everything that affects one stop's suggestions. */
 export function stopSeed(plan: Plan, index: number): string {
   const stop = plan.stops[index]
-  return `${plan.areaId}|${stop.activity}|${effectiveCuisine(stop) ?? ''}|${plan.people}|${plan.date}|${plan.roll}|${index}`
+  const base = `${plan.areaId}|${stop.activity}|${effectiveCuisine(stop) ?? ''}|${plan.people}|${plan.date}|${plan.roll}|${index}`
+  // A stop at its default roll (1) must stay byte-identical to the seed the
+  // app has always produced, so existing shared links keep resolving to the
+  // same venues. Only a reshuffled stop (roll > 1) diverges.
+  const roll = stop.roll ?? 1
+  return roll > 1 ? `${base}|r${roll}` : base
 }
 
 export function stopLabel(stop: Stop): string {

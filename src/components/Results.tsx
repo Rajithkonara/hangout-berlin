@@ -35,6 +35,7 @@ interface ResultsProps {
   areaName: string
   onRetry: () => void
   onShuffle: () => void
+  onShuffleStop: (index: number) => void
   onShare: () => void
   shareLabel: string
 }
@@ -63,10 +64,24 @@ interface StopResultsProps {
   day: DayKey
   areaName: string
   showHeading: boolean
+  multiStop: boolean
+  anyLoading: boolean
   onRetry: () => void
+  onShuffleStop: (index: number) => void
 }
 
-function StopResults({ index, spec, state, day, areaName, showHeading, onRetry }: StopResultsProps) {
+function StopResults({
+  index,
+  spec,
+  state,
+  day,
+  areaName,
+  showHeading,
+  multiStop,
+  anyLoading,
+  onRetry,
+  onShuffleStop,
+}: StopResultsProps) {
   const heading = showHeading ? (
     <h3 className="stop-block__heading">
       Stop {index + 1} · {spec.label}
@@ -111,9 +126,23 @@ function StopResults({ index, spec, state, day, areaName, showHeading, onRetry }
 
   const shownMatches = state.venues.filter((venue) => venue.cuisineMatch).length
 
+  // Reached only when this stop is ready with venues, so a per-stop reshuffle
+  // makes sense here — a single-stop plan already has the global button for it.
   return (
     <div className="stop-block">
-      {heading}
+      <div className="stop-block__heading-row">
+        {heading}
+        {multiStop && (
+          <button
+            type="button"
+            className="secondary stop-block__shuffle"
+            onClick={() => onShuffleStop(index)}
+            disabled={anyLoading}
+          >
+            Shuffle this stop
+          </button>
+        )}
+      </div>
 
       {state.widened && (
         <p className="notice notice--info">
@@ -155,6 +184,7 @@ export function Results({
   areaName,
   onRetry,
   onShuffle,
+  onShuffleStop,
   onShare,
   shareLabel,
 }: ResultsProps) {
@@ -181,7 +211,7 @@ export function Results({
         <h2>{heading}</h2>
         <div className="results__actions">
           <button type="button" className="secondary" onClick={onShuffle} disabled={anyLoading}>
-            Shuffle
+            {multiStop ? 'Shuffle all' : 'Shuffle'}
           </button>
           <button type="button" className="secondary" onClick={onShare}>
             {shareLabel}
@@ -206,7 +236,10 @@ export function Results({
             day={day}
             areaName={areaName}
             showHeading={multiStop}
+            multiStop={multiStop}
+            anyLoading={anyLoading}
             onRetry={onRetry}
+            onShuffleStop={onShuffleStop}
           />
         ))}
       </div>
