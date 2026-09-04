@@ -1,0 +1,105 @@
+{
+  "generated": "2026-09-04",
+  "areas": [
+    {
+      "id": "mitte",
+      "count": 1233
+    },
+    {
+      "id": "tiergarten",
+      "count": 552
+    },
+    {
+      "id": "moabit",
+      "count": 395
+    },
+    {
+      "id": "wedding",
+      "count": 566
+    },
+    {
+      "id": "kreuzberg-36",
+      "count": 759
+    },
+    {
+      "id": "kreuzberg-61",
+      "count": 412
+    },
+    {
+      "id": "friedrichshain",
+      "count": 852
+    },
+    {
+      "id": "prenzlauer-berg",
+      "count": 1136
+    },
+    {
+      "id": "pankow",
+      "count": 240
+    },
+    {
+      "id": "weissensee",
+      "count": 156
+    },
+    {
+      "id": "charlottenburg",
+      "count": 1035
+    },
+    {
+      "id": "wilmersdorf",
+      "count": 498
+    },
+    {
+      "id": "schoeneberg",
+      "count": 662
+    },
+    {
+      "id": "tempelhof",
+      "count": 177
+    },
+    {
+      "id": "neukoelln",
+      "count": 988
+    },
+    {
+      "id": "rixdorf",
+      "count": 733
+    },
+    {
+      "id": "lichtenberg",
+      "count": 221
+    },
+    {
+      "id": "treptow",
+      "count": 373
+    },
+    {
+      "id": "koepenick",
+      "count": 172
+    },
+    {
+      "id": "steglitz",
+      "count": 490
+    },
+    {
+      "id": "zehlendorf",
+      "count": 112
+    },
+    {
+      "id": "spandau",
+      "count": 298
+    },
+    {
+      "id": "reinickendorf",
+      "count": 136
+    },
+    {
+      "id": "marzahn",
+      "count": 93
+    },
+    {
+      "id": "hellersdorf",
+      "count": 140
+    }
+  ]
+}
