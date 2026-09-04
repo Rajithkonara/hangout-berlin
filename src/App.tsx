@@ -23,6 +23,29 @@ import { rankVenues } from './lib/ranking'
 
 const idleResults = (plan: Plan): ResultsState[] => plan.stops.map(() => ({ status: 'idle' }))
 
+// Every plan change is written back into the URL (see the effect below), so a
+// plain refresh of a tab that has already searched looks identical to opening
+// a freshly shared link. sessionStorage is per-tab, so this only suppresses
+// the auto-run on a reload of a tab that has already searched once - a shared
+// link opened in a new tab still resolves itself immediately.
+const SEARCHED_FLAG = 'bhp:searched'
+
+function hasSearchedThisTab(): boolean {
+  try {
+    return sessionStorage.getItem(SEARCHED_FLAG) === '1'
+  } catch {
+    return false
+  }
+}
+
+function markSearchedThisTab(): void {
+  try {
+    sessionStorage.setItem(SEARCHED_FLAG, '1')
+  } catch {
+    // Storage unavailable - the guard just no-ops, same as the Overpass cache.
+  }
+}
+
 export default function App() {
   const [plan, setPlan] = useState<Plan>(() => {
     const fromUrl = planFromParams(new URLSearchParams(window.location.search))
@@ -31,8 +54,11 @@ export default function App() {
   const [results, setResults] = useState<ResultsState[]>(() => idleResults(plan))
   const [shareLabel, setShareLabel] = useState('Copy link')
   const requestRef = useRef<AbortController | null>(null)
-  // A plan arriving via a shared link should resolve itself immediately.
-  const autoRun = useRef(planFromParams(new URLSearchParams(window.location.search)) !== null)
+  // A plan arriving via a shared link should resolve itself immediately - but
+  // only the first time this tab sees it, not on every later refresh.
+  const autoRun = useRef(
+    planFromParams(new URLSearchParams(window.location.search)) !== null && !hasSearchedThisTab(),
+  )
 
   const area = getArea(plan.areaId) ?? AREAS[0]
   const specs = useMemo(
@@ -43,6 +69,7 @@ export default function App() {
   const loading = results.some((r) => r.status === 'loading')
 
   const search = useCallback(async (target: Plan) => {
+    markSearchedThisTab()
     requestRef.current?.abort()
     const controller = new AbortController()
     requestRef.current = controller
