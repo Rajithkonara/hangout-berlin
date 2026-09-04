@@ -101,6 +101,66 @@ export default function App() {
     }
   }, [])
 
+  // Reshuffles a single stop without disturbing any other stop's results.
+  // `claimed` is precomputed by the caller from the other stops' CURRENT
+  // venues, so this never re-cascades or mutates their state/seed.
+  const searchStop = useCallback(
+    async (target: Plan, index: number, claimed: Set<string>) => {
+      requestRef.current?.abort()
+      const controller = new AbortController()
+      requestRef.current = controller
+
+      const targetArea = getArea(target.areaId) ?? AREAS[0]
+      const stop = target.stops[index]
+      const cuisine = effectiveCuisine(stop)
+      const spec = resolveActivity(stop.activity, cuisine)
+
+      // Only this stop's slot goes back to loading; every other stop's
+      // results are left exactly as they are.
+      setResults((prev) => prev.map((r, i) => (i === index ? { status: 'loading' } : r)))
+
+      let next: ResultsState
+      try {
+        const { venues, source, widened, relaxed, matchCount } = await findVenues(
+          targetArea,
+          spec,
+          controller.signal,
+        )
+        if (controller.signal.aborted) return
+        const available = venues.filter((venue) => !claimed.has(venue.id))
+        const ranked = rankVenues(available, {
+          area: targetArea,
+          spec,
+          people: target.people,
+          seed: stopSeed(target, index),
+        })
+        next = {
+          status: 'ready',
+          venues: ranked,
+          source,
+          widened,
+          relaxed,
+          matchCount,
+          cuisineLabel: getCuisine(cuisine)?.label,
+        }
+      } catch (error) {
+        if (controller.signal.aborted) return
+        next = {
+          status: 'error',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Something went wrong while searching.',
+        }
+      }
+
+      if (controller.signal.aborted) return
+      const settled = next
+      setResults((prev) => prev.map((r, i) => (i === index ? settled : r)))
+    },
+    [],
+  )
+
   // Keep the URL in sync so any plan on screen is shareable.
   useEffect(() => {
     const url = `${window.location.pathname}?${planToParams(plan).toString()}`
@@ -143,6 +203,28 @@ export default function App() {
     const next = { ...plan, roll: plan.roll + 1 }
     setPlan(next)
     void search(next)
+  }
+
+  // Rerolls just one stop's suggestions, leaving the other stops untouched.
+  const handleShuffleStop = (index: number) => {
+    const next: Plan = {
+      ...plan,
+      stops: plan.stops.map((stop, i) =>
+        i === index ? { ...stop, roll: (stop.roll ?? 1) + 1 } : stop,
+      ),
+    }
+    setPlan(next)
+
+    // Exclude venues currently shown by every OTHER ready stop (before and
+    // after this one) so the reshuffle doesn't repeat them. Computed from the
+    // current `results` closure, not stale state.
+    const claimed = new Set<string>()
+    results.forEach((result, i) => {
+      if (i === index || result.status !== 'ready') return
+      result.venues.forEach((venue) => claimed.add(venue.id))
+    })
+
+    void searchStop(next, index, claimed)
   }
 
   // Cancels the in-flight Overpass request; when nothing is running it clears
@@ -216,6 +298,7 @@ export default function App() {
           areaName={area.name}
           onRetry={handleSubmit}
           onShuffle={handleShuffle}
+          onShuffleStop={handleShuffleStop}
           onShare={() => void handleShare()}
           shareLabel={shareLabel}
         />

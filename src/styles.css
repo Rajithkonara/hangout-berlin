@@ -345,6 +345,23 @@ button:focus-visible {
   color: var(--muted);
 }
 
+.stop-block__heading-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.stop-block__heading-row .stop-block__heading {
+  margin-bottom: 0;
+}
+
+.stop-block__shuffle {
+  flex-shrink: 0;
+}
+
 .venues {
   list-style: none;
   margin: 0;
