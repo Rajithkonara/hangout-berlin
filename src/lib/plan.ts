@@ -3,13 +3,19 @@ import { DEFAULT_AREA_ID, getArea } from '../data/districts'
 import { PRESET_ACTIVITIES, supportsCuisine } from './activities'
 import { getCuisine } from './cuisines'
 
-export interface Plan {
-  /** ISO date (YYYY-MM-DD) of the meet-up. */
-  date: string
+/** One leg of the day, e.g. "coffee" or "dinner · indian". */
+export interface Stop {
   /** A preset activity id, or free text. */
   activity: string
   /** Optional cuisine id, only meaningful for the food presets. */
   cuisine?: string
+}
+
+export interface Plan {
+  /** ISO date (YYYY-MM-DD) of the meet-up. */
+  date: string
+  /** 1-3 legs of the day, in order, e.g. coffee -> bowling -> dinner. */
+  stops: Stop[]
   areaId: string
   people: number
   /** Changes on every shuffle so the ranking reshuffles deterministically. */
@@ -18,6 +24,7 @@ export interface Plan {
 
 export const MIN_PEOPLE = 2
 export const MAX_PEOPLE = 30
+export const MAX_STOPS = 3
 
 export function todayIso(): string {
   const now = new Date()
@@ -42,10 +49,14 @@ export function formatDate(isoDate: string): string {
   })
 }
 
+export function defaultStop(): Stop {
+  return { activity: 'coffee' }
+}
+
 export function defaultPlan(): Plan {
   return {
     date: todayIso(),
-    activity: 'coffee',
+    stops: [defaultStop()],
     areaId: DEFAULT_AREA_ID,
     people: 4,
     roll: 1,
@@ -57,23 +68,43 @@ function clampPeople(value: number): number {
   return Math.min(MAX_PEOPLE, Math.max(MIN_PEOPLE, Math.round(value)))
 }
 
+/** The cuisine that actually applies to a stop, ignoring a stale one on a non-food activity. */
+export function effectiveCuisine(stop: Stop): string | undefined {
+  if (!supportsCuisine(stop.activity)) return undefined
+  return getCuisine(stop.cuisine)?.id
+}
+
+// Stop 1 keeps the original `activity`/`cuisine` param names so existing shared
+// links keep working; stops 2 and 3 get a numeric suffix.
+function paramSuffix(index: number): string {
+  return index === 0 ? '' : String(index + 1)
+}
+
 export function planToParams(plan: Plan): URLSearchParams {
   const params = new URLSearchParams({
     date: plan.date,
-    activity: plan.activity,
     area: plan.areaId,
     people: String(plan.people),
     roll: String(plan.roll),
   })
-  const cuisine = effectiveCuisine(plan)
-  if (cuisine) params.set('cuisine', cuisine)
+  plan.stops.forEach((stop, index) => {
+    const suffix = paramSuffix(index)
+    params.set(`activity${suffix}`, stop.activity)
+    const cuisine = effectiveCuisine(stop)
+    if (cuisine) params.set(`cuisine${suffix}`, cuisine)
+  })
   return params
 }
 
-/** The cuisine that actually applies, ignoring a stale one on a non-food activity. */
-export function effectiveCuisine(plan: Plan): string | undefined {
-  if (!supportsCuisine(plan.activity)) return undefined
-  return getCuisine(plan.cuisine)?.id
+/** Reads one stop from the URL; `null` means "no such stop present". */
+function stopFromParams(params: URLSearchParams, index: number): Stop | null {
+  const suffix = paramSuffix(index)
+  const raw = params.get(`activity${suffix}`)
+  if (raw === null) return null
+
+  const activity = raw.slice(0, 80).trim() || defaultStop().activity
+  const cuisine = getCuisine(params.get(`cuisine${suffix}`) ?? undefined)
+  return { activity, cuisine: supportsCuisine(activity) ? cuisine?.id : undefined }
 }
 
 export function planFromParams(params: URLSearchParams): Plan | null {
@@ -81,28 +112,33 @@ export function planFromParams(params: URLSearchParams): Plan | null {
 
   const fallback = defaultPlan()
   const date = params.get('date') ?? ''
-  const activity = (params.get('activity') ?? fallback.activity).slice(0, 80)
   const areaId = params.get('area') ?? fallback.areaId
   const roll = Number(params.get('roll'))
-  const cuisine = getCuisine(params.get('cuisine') ?? undefined)
+
+  const stops: Stop[] = []
+  for (let index = 0; index < MAX_STOPS; index++) {
+    const stop = stopFromParams(params, index)
+    if (!stop) break
+    stops.push(stop)
+  }
 
   return {
     date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : fallback.date,
-    activity: activity.trim() || fallback.activity,
-    cuisine: supportsCuisine(activity) ? cuisine?.id : undefined,
+    stops: stops.length ? stops : fallback.stops,
     areaId: getArea(areaId) ? areaId : fallback.areaId,
     people: clampPeople(Number(params.get('people'))),
     roll: Number.isFinite(roll) && roll > 0 ? Math.floor(roll) : 1,
   }
 }
 
-/** Stable key describing everything that affects the suggestions. */
-export function planSeed(plan: Plan): string {
-  return `${plan.areaId}|${plan.activity}|${effectiveCuisine(plan) ?? ''}|${plan.people}|${plan.date}|${plan.roll}`
+/** Stable key describing everything that affects one stop's suggestions. */
+export function stopSeed(plan: Plan, index: number): string {
+  const stop = plan.stops[index]
+  return `${plan.areaId}|${stop.activity}|${effectiveCuisine(stop) ?? ''}|${plan.people}|${plan.date}|${plan.roll}|${index}`
 }
 
-export function activityLabel(plan: Plan): string {
-  const base = PRESET_ACTIVITIES.find((p) => p.id === plan.activity)?.label ?? plan.activity
-  const cuisine = getCuisine(effectiveCuisine(plan))
+export function stopLabel(stop: Stop): string {
+  const base = PRESET_ACTIVITIES.find((p) => p.id === stop.activity)?.label ?? stop.activity
+  const cuisine = getCuisine(effectiveCuisine(stop))
   return cuisine ? `${base} · ${cuisine.label}` : base
 }

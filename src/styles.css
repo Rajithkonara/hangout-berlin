@@ -168,6 +168,44 @@ button:focus-visible {
   border-color: var(--accent);
 }
 
+.stop {
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.stop__legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0;
+}
+
+.stop__remove {
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.stop__remove:hover {
+  color: var(--text);
+}
+
+.add-stop {
+  justify-self: start;
+}
+
 .stepper {
   display: grid;
   grid-template-columns: 2.6rem 1fr 2.6rem;
@@ -293,6 +331,17 @@ button:focus-visible {
 
 .notice--info {
   background: color-mix(in srgb, var(--muted) 14%, transparent);
+  color: var(--muted);
+}
+
+.stop-results {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.stop-block__heading {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
   color: var(--muted);
 }
 
