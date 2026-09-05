@@ -566,3 +566,139 @@ button:focus-visible {
   white-space: nowrap;
   border: 0;
 }
+
+.invite {
+  width: min(26rem, 100%);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.invite::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.invite__panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.invite__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.invite__head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.invite__close {
+  padding: 0.1rem 0.4rem;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.invite__date,
+.invite__until,
+.invite__hint {
+  margin: 0;
+  color: var(--muted);
+}
+
+.invite__date {
+  margin-top: -0.6rem;
+}
+
+.invite__hint {
+  font-size: 0.85rem;
+}
+
+.invite__when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.invite__field {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.invite__until {
+  padding-bottom: 0.6rem;
+  font-size: 0.9rem;
+}
+
+.invite__itinerary {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0.9rem 0;
+  border-block: 1px solid var(--line);
+  list-style: none;
+}
+
+.invite__stop {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr;
+  gap: 0.6rem;
+}
+
+.invite__stop-n {
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.invite__label,
+.invite__venue,
+.invite__address {
+  display: block;
+}
+
+.invite__label {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.invite__venue {
+  font-weight: 600;
+}
+
+.invite__address {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.invite__actions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+@media (max-width: 34rem) {
+  /* Bottom sheet: a dialog centres itself with `margin: auto`, so pinning the
+     bottom margin to 0 drops it to the edge of the viewport. */
+  .invite {
+    width: 100%;
+    max-width: 100%;
+    max-height: 88vh;
+    margin: auto auto 0;
+    border-bottom: 0;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+}
