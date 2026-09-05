@@ -384,9 +384,57 @@ button:focus-visible {
 }
 
 .venue__rank {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1.5px solid var(--line);
+  border-radius: 50%;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   color: var(--accent);
+  cursor: pointer;
+  user-select: none;
+}
+
+.venue--picked {
+  /* The list separates cards with a top rule; the tint replaces it here so the
+     picked card reads as one block rather than a tinted band under a line. */
+  border-top-color: transparent;
+  border-radius: 10px;
+  margin: 0 -0.6rem;
+  padding: 0.9rem 0.6rem;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.venue--picked .venue__rank {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+/* The radio itself is sr-only, so its focus ring has to land on the badge. */
+.venue__pick:focus-visible + .venue__rank {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.results__invite {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
+
+@media (max-width: 34rem) {
+  /* 44px minimum tap target. */
+  .venue {
+    grid-template-columns: 2.75rem 1fr;
+  }
+
+  .venue__rank {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
 }
 
 .venue__body {

@@ -12,6 +12,10 @@ interface VenueCardProps {
   venue: RankedVenue
   index: number
   day: DayKey
+  /** Radio group name - one group per stop, so each stop keeps one pick. */
+  groupName: string
+  picked: boolean
+  onPick: (venueId: string) => void
 }
 
 function osmLink(venue: RankedVenue): string {
@@ -24,18 +28,30 @@ function mapsLink(venue: RankedVenue): string {
   return `https://www.openstreetmap.org/?mlat=${venue.lat}&mlon=${venue.lon}#map=18/${venue.lat}/${venue.lon}&query=${query}`
 }
 
-export function VenueCard({ venue, index, day }: VenueCardProps) {
+export function VenueCard({ venue, index, day, groupName, picked, onPick }: VenueCardProps) {
   const hours = venue.tags.opening_hours
   const state = opensOn(hours, day)
   const address = venueAddress(venue)
   const website = venueWebsite(venue)
   const phone = venuePhone(venue)
+  // Venue ids look like "node/1234", which is fine in an id attribute but
+  // awkward to read in the DOM; the slash goes away for tidiness only.
+  const inputId = `${groupName}-${venue.id.replace('/', '-')}`
 
   return (
-    <li className="venue">
-      <span className="venue__rank" aria-hidden="true">
-        {index + 1}
-      </span>
+    <li className={picked ? 'venue venue--picked' : 'venue'}>
+      <input
+        type="radio"
+        className="venue__pick sr-only"
+        id={inputId}
+        name={groupName}
+        checked={picked}
+        onChange={() => onPick(venue.id)}
+      />
+      <label className="venue__rank" htmlFor={inputId}>
+        <span aria-hidden="true">{picked ? '✓' : index + 1}</span>
+        <span className="sr-only">Pick {venue.name}</span>
+      </label>
 
       <div className="venue__body">
         <h3 className="venue__name">{venue.name}</h3>

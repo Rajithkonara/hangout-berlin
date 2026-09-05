@@ -53,6 +53,7 @@ export default function App() {
   })
   const [results, setResults] = useState<ResultsState[]>(() => idleResults(plan))
   const [shareLabel, setShareLabel] = useState('Copy link')
+  const [picks, setPicks] = useState<(string | null)[]>(() => plan.stops.map(() => null))
   const requestRef = useRef<AbortController | null>(null)
   // A plan arriving via a shared link should resolve itself immediately - but
   // only the first time this tab sees it, not on every later refresh.
@@ -200,6 +201,19 @@ export default function App() {
     void search(plan)
   }, [plan, search])
 
+  // Each ready stop defaults to its top-ranked venue; an explicit pick survives
+  // as long as that venue is still on screen.
+  useEffect(() => {
+    setPicks((prev) =>
+      results.map((result, index) => {
+        if (result.status !== 'ready') return null
+        const current = prev[index]
+        const stillShown = current !== null && result.venues.some((v) => v.id === current)
+        return stillShown ? current : (result.venues[0]?.id ?? null)
+      }),
+    )
+  }, [results])
+
   useEffect(() => () => requestRef.current?.abort(), [])
 
   const update = (patch: Partial<Plan>) => setPlan((prev) => ({ ...prev, ...patch }))
@@ -253,6 +267,9 @@ export default function App() {
 
     void searchStop(next, index, claimed)
   }
+
+  const handlePick = (stopIndex: number, venueId: string) =>
+    setPicks((prev) => prev.map((id, i) => (i === stopIndex ? venueId : id)))
 
   // Cancels the in-flight Overpass request; when nothing is running it clears
   // the results and puts the form back to its defaults.
@@ -328,6 +345,10 @@ export default function App() {
           onShuffleStop={handleShuffleStop}
           onShare={() => void handleShare()}
           shareLabel={shareLabel}
+          picks={picks}
+          onPick={handlePick}
+          onInvite={() => undefined}
+          canInvite={false}
         />
       </main>
 

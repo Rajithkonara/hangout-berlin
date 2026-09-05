@@ -38,6 +38,11 @@ interface ResultsProps {
   onShuffleStop: (index: number) => void
   onShare: () => void
   shareLabel: string
+  /** Venue id picked per stop, or null when that stop has no pick yet. */
+  picks: (string | null)[]
+  onPick: (stopIndex: number, venueId: string) => void
+  onInvite: () => void
+  canInvite: boolean
 }
 
 function Skeletons() {
@@ -68,6 +73,8 @@ interface StopResultsProps {
   anyLoading: boolean
   onRetry: () => void
   onShuffleStop: (index: number) => void
+  picked: string | null
+  onPick: (stopIndex: number, venueId: string) => void
 }
 
 function StopResults({
@@ -81,6 +88,8 @@ function StopResults({
   anyLoading,
   onRetry,
   onShuffleStop,
+  picked,
+  onPick,
 }: StopResultsProps) {
   const heading = showHeading ? (
     <h3 className="stop-block__heading">
@@ -170,7 +179,15 @@ function StopResults({
 
       <ul className="venues">
         {state.venues.map((venue, venueIndex) => (
-          <VenueCard key={venue.id} venue={venue} index={venueIndex} day={day} />
+          <VenueCard
+            key={venue.id}
+            venue={venue}
+            index={venueIndex}
+            day={day}
+            groupName={`stop-${index}`}
+            picked={venue.id === picked}
+            onPick={(venueId) => onPick(index, venueId)}
+          />
         ))}
       </ul>
     </div>
@@ -187,6 +204,10 @@ export function Results({
   onShuffleStop,
   onShare,
   shareLabel,
+  picks,
+  onPick,
+  onInvite,
+  canInvite,
 }: ResultsProps) {
   if (stops.every((s) => s.state.status === 'idle')) {
     return (
@@ -216,6 +237,16 @@ export function Results({
           <button type="button" className="secondary" onClick={onShare}>
             {shareLabel}
           </button>
+          {canInvite && (
+            <button
+              type="button"
+              className="secondary results__invite"
+              onClick={onInvite}
+              disabled={anyLoading}
+            >
+              Send invite
+            </button>
+          )}
         </div>
       </header>
 
@@ -240,6 +271,8 @@ export function Results({
             anyLoading={anyLoading}
             onRetry={onRetry}
             onShuffleStop={onShuffleStop}
+            picked={picks[index] ?? null}
+            onPick={onPick}
           />
         ))}
       </div>
