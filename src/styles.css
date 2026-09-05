@@ -639,6 +639,14 @@ button:focus-visible {
   color: var(--muted);
 }
 
+/* Chrome renders type="time" taller than a <select> at the same padding
+   (its internal segment/clear UI adds height) - pin both so "Starts" and
+   "For" line up instead of drifting apart under align-items: end. */
+.invite__field input,
+.invite__field select {
+  height: 2.75rem;
+}
+
 .invite__until {
   padding-bottom: 0.6rem;
   font-size: 0.9rem;
