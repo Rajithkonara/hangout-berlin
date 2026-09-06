@@ -229,3 +229,22 @@ export function mailtoUrl(details: InviteDetails): string {
   const full = build(true)
   return full.length <= MAILTO_LIMIT ? full : build(false)
 }
+
+// A regular (GSM-7, single-segment) SMS carries 160 characters; going over
+// splits the text into multiple linked messages that don't always thread
+// together on the recipient's end. Staying under one segment keeps the
+// invite a single text.
+const SMS_LIMIT = 160
+
+/**
+ * A one-segment SMS version of the invite - no itinerary, just enough to
+ * place it and point at the full plan. Falls back to the bare link if even
+ * that short framing doesn't fit.
+ */
+export function smsBody(details: InviteDetails): string {
+  const short = `Hangout in ${details.areaName}, ${details.dateLabel} ${details.startTime}. ${details.planUrl}`
+  if (short.length <= SMS_LIMIT) return short
+  return details.planUrl.length <= SMS_LIMIT
+    ? details.planUrl
+    : details.planUrl.slice(0, SMS_LIMIT)
+}

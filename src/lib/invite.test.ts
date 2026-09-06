@@ -7,6 +7,7 @@ import {
   googleCalendarUrl,
   icsText,
   mailtoUrl,
+  smsBody,
   type InviteDetails,
 } from './invite.ts'
 
@@ -54,6 +55,17 @@ test('calendar links carry no description, which is what keeps the mailto short'
 test('a venue with no address renders without a dangling blank line', () => {
   const body = emailBody(details({ stops: [{ label: 'Coffee', venueName: 'Five Elephant' }] }), true)
   assert.ok(body.includes('1. Coffee\n   Five Elephant\n\nAdd it to your calendar:'))
+})
+
+test('sms body always fits inside a single SMS segment', () => {
+  const body = smsBody(details())
+  assert.ok(body.length <= 160, `sms body was ${body.length} characters`)
+  assert.ok(body.includes('hangout.berlin'), 'the plan URL must survive')
+})
+
+test('an oversized plan URL still keeps the sms body under the segment limit', () => {
+  const body = smsBody(details({ planUrl: `https://hangout.berlin/?${'x'.repeat(300)}` }))
+  assert.ok(body.length <= 160, `sms body was ${body.length} characters`)
 })
 
 test('duration sets the end time', () => {

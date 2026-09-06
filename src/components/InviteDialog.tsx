@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { endTimeLabel, icsText, mailtoUrl, type InviteDetails } from '../lib/invite'
+import { endTimeLabel, icsText, mailtoUrl, smsBody, type InviteDetails } from '../lib/invite'
 
 interface InviteDialogProps {
   /** Everything but the time, which this dialog owns and the plan never stores. */
@@ -8,6 +8,10 @@ interface InviteDialogProps {
 }
 
 const DURATIONS = [1, 2, 3, 4]
+
+// Only iOS and Android ship a default handler for `sms:` links - desktop
+// browsers have nothing to open it with, so the button stays hidden there.
+const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
 export function InviteDialog({ base, onClose }: InviteDialogProps) {
   const ref = useRef<HTMLDialogElement>(null)
@@ -41,6 +45,13 @@ export function InviteDialog({ base, onClose }: InviteDialogProps) {
   // back, so leaving it up lets the user retry or grab the .ics instead.
   const openEmail = () => {
     window.location.href = mailtoUrl(details)
+  }
+
+  // iOS Safari only prefills the body when the link has no number before it
+  // and uses `&` there instead of `?`; Android accepts either separator.
+  const openSms = () => {
+    const separator = /iPad|iPhone|iPod/i.test(navigator.userAgent) ? '&' : '?'
+    window.location.href = `sms:${separator}body=${encodeURIComponent(smsBody(details))}`
   }
 
   return (
@@ -104,6 +115,11 @@ export function InviteDialog({ base, onClose }: InviteDialogProps) {
           <button type="button" className="primary" onClick={openEmail}>
             Open email app
           </button>
+          {isMobile && (
+            <button type="button" className="secondary" onClick={openSms}>
+              Text the invite
+            </button>
+          )}
         </div>
 
         <p className="invite__hint">
