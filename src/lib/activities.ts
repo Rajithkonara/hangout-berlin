@@ -38,6 +38,8 @@ export interface PresetActivity extends ActivitySpec {
   emoji: string
   /** Rough time of day, shown as a hint in the UI. */
   hint: string
+  /** "HH:MM" default start time for the invite dialog. */
+  startTime: string
 }
 
 export const PRESET_ACTIVITIES: readonly PresetActivity[] = [
@@ -46,6 +48,7 @@ export const PRESET_ACTIVITIES: readonly PresetActivity[] = [
     label: 'Coffee',
     emoji: '☕',
     hint: 'morning / afternoon',
+    startTime: '15:00',
     filters: [
       { key: 'amenity', value: 'cafe' },
       { key: 'shop', value: 'coffee' },
@@ -56,6 +59,7 @@ export const PRESET_ACTIVITIES: readonly PresetActivity[] = [
     label: 'Breakfast',
     emoji: '🥐',
     hint: 'early morning',
+    startTime: '08:00',
     filters: [
       { key: 'amenity', value: 'cafe' },
       { key: 'shop', value: 'bakery' },
@@ -68,6 +72,7 @@ export const PRESET_ACTIVITIES: readonly PresetActivity[] = [
     label: 'Brunch',
     emoji: '🥞',
     hint: 'late morning / midday',
+    startTime: '10:00',
     filters: [
       { key: 'amenity', value: 'cafe' },
       { key: 'amenity', value: 'restaurant' },
@@ -79,6 +84,7 @@ export const PRESET_ACTIVITIES: readonly PresetActivity[] = [
     label: 'Lunch',
     emoji: '🍽️',
     hint: 'midday',
+    startTime: '12:00',
     filters: [
       { key: 'amenity', value: 'restaurant' },
       { key: 'amenity', value: 'fast_food' },
@@ -90,6 +96,7 @@ export const PRESET_ACTIVITIES: readonly PresetActivity[] = [
     label: 'Evening drinks',
     emoji: '🍻',
     hint: 'evening',
+    startTime: '19:00',
     filters: [
       { key: 'amenity', value: 'bar' },
       { key: 'amenity', value: 'pub' },
@@ -105,9 +112,15 @@ export const PRESET_ACTIVITIES: readonly PresetActivity[] = [
     label: 'Dinner',
     emoji: '🍝',
     hint: 'evening',
+    startTime: '18:00',
     filters: [{ key: 'amenity', value: 'restaurant' }],
   },
 ]
+
+/** Default invite start time for an activity id; free-text/keyword activities fall back to early evening. */
+export function defaultStartTime(activityId: string): string {
+  return PRESET_ACTIVITIES.find((preset) => preset.id === activityId)?.startTime ?? '18:00'
+}
 
 /** Presets that offer the optional cuisine picker. */
 export const FOOD_ACTIVITY_IDS: ReadonlySet<string> = new Set([

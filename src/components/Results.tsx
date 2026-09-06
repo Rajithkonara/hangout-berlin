@@ -244,7 +244,7 @@ export function Results({
               onClick={onInvite}
               disabled={anyLoading}
             >
-              Send invite
+              Share Plan
             </button>
           )}
         </div>

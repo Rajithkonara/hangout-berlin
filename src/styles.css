@@ -234,6 +234,10 @@ button:focus-visible {
 
 .primary,
 .secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
   font: inherit;
   font-weight: 600;
   border-radius: 10px;
@@ -667,6 +671,10 @@ button:focus-visible {
   gap: 0.6rem;
 }
 
+.invite__stop--unnumbered {
+  grid-template-columns: 1fr;
+}
+
 .invite__stop-n {
   color: var(--accent);
   font-weight: 700;
@@ -696,6 +704,28 @@ button:focus-visible {
 .invite__actions {
   display: grid;
   gap: 0.5rem;
+}
+
+.invite__share {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.invite__share-label {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.invite__share-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.invite__share-row .secondary {
+  flex: 1 1 8rem;
+  padding: 0.65rem 0.8rem;
 }
 
 @media (max-width: 34rem) {

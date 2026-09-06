@@ -13,6 +13,22 @@ export interface InviteStop {
   venueName: string
   /** From `venueAddress()`; missing for venues OSM has no address for. */
   address?: string
+  lat?: number
+  lon?: number
+}
+
+export function mapsUrl(stop: InviteStop, areaName: string): string {
+  const place = stop.address ? `${stop.venueName}, ${stop.address}` : `${stop.venueName}, ${areaName}`
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${place}, Berlin`)}`
+}
+
+/**
+ * A coordinate pin link - shorter than `mapsUrl` but unlabelled, so it's only
+ * used where length matters more than a named place card (the SMS body).
+ */
+export function mapsPinUrl(stop: InviteStop): string | undefined {
+  if (stop.lat == null || stop.lon == null) return undefined
+  return `https://www.google.com/maps/search/?api=1&query=${stop.lat},${stop.lon}`
 }
 
 export interface InviteDetails {
@@ -88,13 +104,18 @@ function calendarLocation(details: InviteDetails): string {
   return first.address ? `${first.venueName}, ${first.address}` : `${first.venueName}, Berlin`
 }
 
+/** "1. " before a stop's label, but only when there's more than one stop to number. */
+function stepPrefix(index: number, total: number): string {
+  return total > 1 ? `${index + 1}. ` : '• '
+}
+
 /**
  * The full itinerary. Used only by the .ics, which has no length limit - see
  * the calendar URL builders for why they deliberately leave it out.
  */
 function calendarDescription(details: InviteDetails): string {
   const itinerary = details.stops
-    .map((stop, index) => `${index + 1}. ${stop.label} — ${stop.venueName}`)
+    .map((stop, index) => `${stepPrefix(index, details.stops.length)}${stop.label} — ${stop.venueName}`)
     .join('\n')
   return `${itinerary}\n\nFull plan: ${details.planUrl}`
 }
@@ -183,13 +204,39 @@ export function icsText(details: InviteDetails): string {
   )
 }
 
+const startsWithVowel = (word: string): boolean => /^[aeiou]/i.test(word)
+
+/** " for a coffee" / " for an italian dinner" for a single-stop plan, "" when there are several stops. */
+function activityPhrase(details: InviteDetails): string {
+  const singleStop = details.stops.length === 1 ? details.stops[0] : undefined
+  if (!singleStop) return ''
+  return ` for ${startsWithVowel(singleStop.label) ? 'an' : 'a'} ${singleStop.label.toLowerCase()}`
+}
+
+/** 'today' / 'tomorrow' / 'day after tomorrow', or undefined further out (callers fall back to the full date). */
+function relativeDayWord(details: InviteDetails): string | undefined {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const target = new Date(`${details.date}T00:00:00`)
+  const diffDays = Math.round((target.getTime() - today.getTime()) / 86_400_000)
+  if (diffDays === 0) return 'today'
+  if (diffDays === 1) return 'tomorrow'
+  if (diffDays === 2) return 'day after tomorrow'
+  return undefined
+}
+
+const capitalize = (word: string): string => word.charAt(0).toUpperCase() + word.slice(1)
+
 export function emailSubject(details: InviteDetails): string {
-  return `Hangout in ${details.areaName} — ${details.dateLabel}, ${details.startTime}`
+  const day = relativeDayWord(details)
+  const dayPart = day ? `${capitalize(day)} at ${details.startTime}` : `${details.dateLabel}, ${details.startTime}`
+  return `Hangout${activityPhrase(details)} in ${details.areaName} — ${dayPart}`
 }
 
 export function emailBody(details: InviteDetails, withAddresses: boolean): string {
+  const singleStop = details.stops.length === 1 ? details.stops[0] : undefined
   const lines: string[] = [
-    "Hey! Here's the plan for our hangout.",
+    `Hey! Here's the plan for our hangout${activityPhrase(details)}. 👋`,
     '',
     `${details.dateLabel} · ${details.startTime}–${endTimeLabel(details)}`,
     `${details.areaName} · ${details.people} people`,
@@ -197,14 +244,15 @@ export function emailBody(details: InviteDetails, withAddresses: boolean): strin
   ]
 
   details.stops.forEach((stop, index) => {
-    lines.push(`${index + 1}. ${stop.label}`)
-    lines.push(`   ${stop.venueName}`)
-    if (withAddresses && stop.address) lines.push(`   ${stop.address}`)
+    const indent = singleStop ? '' : '   '
+    if (!singleStop) lines.push(`${stepPrefix(index, details.stops.length)}${stop.label}`)
+    lines.push(`${indent}📍 ${stop.venueName}`)
+    if (withAddresses) lines.push(`${indent}Address: ${stop.address ?? details.areaName} (${mapsUrl(stop, details.areaName)})`)
     lines.push('')
   })
 
   lines.push(
-    'Add it to your calendar:',
+    '📅 Add it to your calendar:',
     `Google  — ${googleCalendarUrl(details)}`,
     `Outlook — ${outlookCalendarUrl(details)}`,
     '',
@@ -236,15 +284,44 @@ export function mailtoUrl(details: InviteDetails): string {
 // invite a single text.
 const SMS_LIMIT = 160
 
-/**
- * A one-segment SMS version of the invite - no itinerary, just enough to
- * place it and point at the full plan. Falls back to the bare link if even
- * that short framing doesn't fit.
- */
+/** "Sep 6" - reads like something a friend typed, and short enough to leave
+ * room for the plan URL in one SMS segment (the full "Sunday, September 6"
+ * dateLabel doesn't fit alongside a long area name and the link). */
+function shortDateLabel(details: InviteDetails): string {
+  const { start } = eventDates(details)
+  return start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 export function smsBody(details: InviteDetails): string {
-  const short = `Hangout in ${details.areaName}, ${details.dateLabel} ${details.startTime}. ${details.planUrl}`
+  const first = details.stops[0]
+  const link = (first && mapsPinUrl(first)) ?? (first ? mapsUrl(first, details.areaName) : details.planUrl)
+  const intro = first
+    ? `Hey! Let's hang out at ${first.venueName}, ${shortDateLabel(details)} ${details.startTime}`
+    : `Hey! Let's hang in ${details.areaName}, ${shortDateLabel(details)} at ${details.startTime}`
+  const short = `${intro} — ${link}`
   if (short.length <= SMS_LIMIT) return short
-  return details.planUrl.length <= SMS_LIMIT
-    ? details.planUrl
-    : details.planUrl.slice(0, SMS_LIMIT)
+  return link.length <= SMS_LIMIT ? link : link.slice(0, SMS_LIMIT)
+}
+
+// Safety margin for the wa.me URL length - WhatsApp itself has no message limit.
+const WHATSAPP_LIMIT = 2000
+
+export function whatsappBody(details: InviteDetails): string {
+  const day = relativeDayWord(details)
+  const lines: string[] = [
+    `Hey! Let's hang out${activityPhrase(details)} in ${details.areaName}${day ? ` ${day}` : ''}.`,
+    `${details.dateLabel} · ${details.startTime}–${endTimeLabel(details)}`,
+    '',
+  ]
+
+  details.stops.forEach((stop, index) => {
+    lines.push(`${stepPrefix(index, details.stops.length)}${stop.label}: ${stop.venueName}`)
+    lines.push(`📍 ${mapsUrl(stop, details.areaName)}`)
+    lines.push('')
+  })
+
+  lines.push(`Full plan: ${details.planUrl}`)
+
+  const full = lines.join('\n')
+  return full.length <= WHATSAPP_LIMIT ? full : `Full plan: ${details.planUrl}`
 }

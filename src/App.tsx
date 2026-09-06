@@ -3,7 +3,7 @@ import { InviteDialog } from './components/InviteDialog'
 import { PlannerForm } from './components/PlannerForm'
 import { Results, type ResultsState } from './components/Results'
 import { AREAS, getArea } from './data/districts'
-import { resolveActivity } from './lib/activities'
+import { defaultStartTime, resolveActivity } from './lib/activities'
 import { getCuisine } from './lib/cuisines'
 import type { InviteDetails, InviteStop } from './lib/invite'
 import {
@@ -85,6 +85,8 @@ export default function App() {
         label: stopLabel(stop),
         venueName: venue.name,
         address: venueAddress(venue),
+        lat: venue.lat,
+        lon: venue.lon,
       })
     })
 
@@ -381,7 +383,13 @@ export default function App() {
         />
       </main>
 
-      {inviteOpen && <InviteDialog base={inviteBase} onClose={() => setInviteOpen(false)} />}
+      {inviteOpen && (
+        <InviteDialog
+          base={inviteBase}
+          defaultStartTime={defaultStartTime(plan.stops[0]?.activity ?? '')}
+          onClose={() => setInviteOpen(false)}
+        />
+      )}
 
       <footer className="footer">
         <p>
