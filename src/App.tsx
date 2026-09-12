@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { InviteDialog } from './components/InviteDialog'
 import { PlannerForm } from './components/PlannerForm'
 import { Results, type ResultsState } from './components/Results'
 import { AREAS, getArea } from './data/districts'
-import { resolveActivity } from './lib/activities'
+import { defaultStartTime, resolveActivity } from './lib/activities'
 import { getCuisine } from './lib/cuisines'
+import type { InviteDetails, InviteStop } from './lib/invite'
 import {
   MAX_STOPS,
   dayKeyOf,
@@ -19,7 +21,7 @@ import {
   type Stop,
 } from './lib/plan'
 import { findVenues } from './lib/venues'
-import { rankVenues } from './lib/ranking'
+import { rankVenues, venueAddress } from './lib/ranking'
 
 const idleResults = (plan: Plan): ResultsState[] => plan.stops.map(() => ({ status: 'idle' }))
 
@@ -53,6 +55,8 @@ export default function App() {
   })
   const [results, setResults] = useState<ResultsState[]>(() => idleResults(plan))
   const [shareLabel, setShareLabel] = useState('Copy link')
+  const [picks, setPicks] = useState<(string | null)[]>(() => plan.stops.map(() => null))
+  const [inviteOpen, setInviteOpen] = useState(false)
   const requestRef = useRef<AbortController | null>(null)
   // A plan arriving via a shared link should resolve itself immediately - but
   // only the first time this tab sees it, not on every later refresh.
@@ -67,6 +71,34 @@ export default function App() {
   )
   const day = dayKeyOf(plan.date)
   const loading = results.some((r) => r.status === 'loading')
+
+  // Only stops that resolved and have a pick make it into the invite; a stop
+  // that errored is skipped rather than blocking the whole email.
+  const inviteBase = useMemo((): Omit<InviteDetails, 'startTime' | 'durationHours'> => {
+    const stops: InviteStop[] = []
+    plan.stops.forEach((stop, index) => {
+      const result = results[index]
+      if (result?.status !== 'ready') return
+      const venue = result.venues.find((candidate) => candidate.id === picks[index])
+      if (!venue) return
+      stops.push({
+        label: stopLabel(stop),
+        venueName: venue.name,
+        address: venueAddress(venue),
+        lat: venue.lat,
+        lon: venue.lon,
+      })
+    })
+
+    return {
+      date: plan.date,
+      dateLabel: formatDate(plan.date),
+      areaName: area.name,
+      people: plan.people,
+      stops,
+      planUrl: `${window.location.origin}${window.location.pathname}?${planToParams(plan)}`,
+    }
+  }, [plan, results, picks, area.name])
 
   const search = useCallback(async (target: Plan) => {
     markSearchedThisTab()
@@ -200,6 +232,19 @@ export default function App() {
     void search(plan)
   }, [plan, search])
 
+  // Each ready stop defaults to its top-ranked venue; an explicit pick survives
+  // as long as that venue is still on screen.
+  useEffect(() => {
+    setPicks((prev) =>
+      results.map((result, index) => {
+        if (result.status !== 'ready') return null
+        const current = prev[index]
+        const stillShown = current !== null && result.venues.some((v) => v.id === current)
+        return stillShown ? current : (result.venues[0]?.id ?? null)
+      }),
+    )
+  }, [results])
+
   useEffect(() => () => requestRef.current?.abort(), [])
 
   const update = (patch: Partial<Plan>) => setPlan((prev) => ({ ...prev, ...patch }))
@@ -253,6 +298,9 @@ export default function App() {
 
     void searchStop(next, index, claimed)
   }
+
+  const handlePick = (stopIndex: number, venueId: string) =>
+    setPicks((prev) => prev.map((id, i) => (i === stopIndex ? venueId : id)))
 
   // Cancels the in-flight Overpass request; when nothing is running it clears
   // the results and puts the form back to its defaults.
@@ -328,8 +376,20 @@ export default function App() {
           onShuffleStop={handleShuffleStop}
           onShare={() => void handleShare()}
           shareLabel={shareLabel}
+          picks={picks}
+          onPick={handlePick}
+          onInvite={() => setInviteOpen(true)}
+          canInvite={inviteBase.stops.length > 0}
         />
       </main>
+
+      {inviteOpen && (
+        <InviteDialog
+          base={inviteBase}
+          defaultStartTime={defaultStartTime(plan.stops[0]?.activity ?? '')}
+          onClose={() => setInviteOpen(false)}
+        />
+      )}
 
       <footer className="footer">
         <p>
